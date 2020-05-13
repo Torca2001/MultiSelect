@@ -7,7 +7,7 @@ class MultiSelect {
     return 'MultiSelect';
   }
   getVersion() {
-    return '0.1.1';
+    return '0.1.2';
   }
   getAuthor() {
     return 'Torca';
