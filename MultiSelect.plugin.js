@@ -161,7 +161,6 @@ class MultiSelect {
       let Treeitem = ZLibrary.ReactTools.getReactInstance(UserDom);
       let ClickedUser = null;
       let overloadcount = 0;
-      console.log(Treeitem);
       while(ClickedUser == null && Treeitem != null && overloadcount < 1000){
         if (Treeitem.memoizedProps != undefined && Treeitem.memoizedProps.user != undefined ){
           ClickedUser = Treeitem.memoizedProps.user;
