@@ -1,4 +1,4 @@
-//META{"name":"MultiSelect"}*//
+//META{"name":"MultiSelect", "src":"https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"}*//
 class MultiSelect {
   constructor(props) {
     this.handleContextMenu = this.handleContextMenu.bind(this);
