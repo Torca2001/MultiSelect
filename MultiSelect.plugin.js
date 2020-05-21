@@ -1,4 +1,4 @@
-//META{"name":"MultiSelect", "src":"https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js", "version":"0.1.2"}*//
+//META{"name":"MultiSelect", "src":"https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js", "version":"0.1.3"}*//
 class MultiSelect {
   constructor(props) {
     this.handleContextMenu = this.handleContextMenu.bind(this);
@@ -7,7 +7,7 @@ class MultiSelect {
     return 'MultiSelect';
   }
   getVersion() {
-    return '0.1.2';
+    return '0.1.3';
   }
   getAuthor() {
     return 'Torca';
@@ -127,6 +127,18 @@ class MultiSelect {
 	
 	document.addEventListener('click', this.UserClickEvent, true)
   }
+ 
+  UserOnVoiceChannelInGuild(userid, guildid){
+    if (BdApi.findModuleByProps('getVoiceStates').getAllVoiceStates()[guildid] != undefined){
+      let tmplist = Object.values(BdApi.findModuleByProps('getVoiceStates').getAllVoiceStates()[guildid]);
+      for (let index = 0; index < tmplist.length; index++) {
+        if (tmplist[index].userId == userid){
+          return true;
+        }
+      }
+    }
+    return false;
+  }
   
   UserClickEvent(e){
     //Nothing to check
@@ -155,7 +167,7 @@ class MultiSelect {
       }
     }
 
-    if (e.ctrlKey && IsVoiceUser){
+    if ((e.ctrlKey || e.shiftKey) && IsVoiceUser){
       e.stopPropagation();
 
       let Treeitem = ZLibrary.ReactTools.getReactInstance(UserDom);
@@ -214,7 +226,7 @@ class MultiSelect {
     this.ContextMenuActions = ZLibrary.DiscordModules.ContextMenuActions;
 
     this.moveTimeoutTime = 200;
-    this.PreviousGuildId = "0";
+    this.PreviousGuildId = ZLibrary.DiscordModules.SelectedGuildStore.getGuildId();
     XenoLib.patchContext(this.handleContextMenu);
   }
   
@@ -254,6 +266,16 @@ class MultiSelect {
             if (recipients[userIDX].Node != undefined){
               recipients[userIDX].Node.style.background = '';
             }
+
+            //Skip users that aren't in a voice channel anymore
+            while(this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId) == false){
+              userIDX++;
+              //Stop function
+              if (userIDX >= recipients.length){
+                return;
+              }
+            }
+
             ZLibrary.DiscordModules.APIModule.patch({
               url: ZLibrary.DiscordModules.DiscordConstants.Endpoints.GUILD_MEMBER(this.getVoiceChannel(chanId).guild_id, recipients[userIDX].user.id),
               body: {
@@ -278,6 +300,7 @@ class MultiSelect {
                 if (this.moveTimeoutTime<500) setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
               });
           };
+
           timeoutFunc();
         }
       })
