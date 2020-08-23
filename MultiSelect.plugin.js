@@ -42,7 +42,7 @@ const MultiSelect = (() => {
           github_username: 'Torca2001',
         },
       ],
-      version: '1.0.0',
+      version: '1.0.1',
       description: 'Allows you to select multiple users (hold ctrl while click on them) in a voice chat to move them',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
@@ -52,6 +52,11 @@ const MultiSelect = (() => {
         title: 'Using BDv2 Plugin',
         type: 'updated',
         items: ['It somehow works'],
+      },
+      {
+        title: 'Fixed it',
+        type: 'updated',
+        items: ['Works again'],
       },
     ],
   };
@@ -262,7 +267,7 @@ const MultiSelect = (() => {
                               }
                             })
                               .then(e => {
-                                if (e.status === 204) {
+                                if (e.status === 200 || e.status === 204) {
                                   userIDX++;
                                   if (userIDX < recipients.length && this.moveTimeoutTime < 500) {
                                     setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
