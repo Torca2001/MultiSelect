@@ -42,21 +42,26 @@ const MultiSelect = (() => {
           github_username: 'Torca2001',
         },
       ],
-      version: '1.0.1',
+      version: '1.0.2',
       description: 'Allows you to select multiple users (hold ctrl while click on them) in a voice chat to move them',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
     },
     changelog: [
       {
-        title: 'Using BDv2 Plugin',
+        title: 'Persistence',
         type: 'updated',
-        items: ['It somehow works'],
+        items: ['now it keeps people highlighted even if they are jumping about'],
       },
       {
         title: 'Fixed it',
         type: 'updated',
         items: ['Works again'],
+      },
+      {
+        title: 'Using BDv2 Plugin',
+        type: 'updated',
+        items: ['It somehow works'],
       },
     ],
   };
@@ -112,6 +117,12 @@ const MultiSelect = (() => {
       }
 
       onStart() {
+		ZeresPluginLibrary.PluginUtilities.addStyle(config.info.name,
+			`.UserSelected {
+				background-color: #005fff87;
+				border-radius: 5px;
+			}`
+		);  
         this.PreviousGuildId = ZeresPluginLibrary.DiscordModules.SelectedGuildStore.getGuildId();
         global.MultiSelectedUsers = {};
         this.promises = {
@@ -121,6 +132,18 @@ const MultiSelect = (() => {
           },
         };
         this.patchUserContextMenu(this.promises.state);
+		this.unpatch = Patcher.after(ZeresPluginLibrary.WebpackModules.getByDisplayName("VoiceUser").prototype, "render", (r, __, e,b) => {
+				//Check user is selected
+				if (global.MultiSelectedUsers[r.props.user.id] != undefined){
+					if (e.props.className.includes("UserSelected") == false){
+						e.props.className += " UserSelected";
+					}
+				}
+				else{
+					e.props.className = e.props.className.replace("(\s|^)UserSelected(\s|$)", "");
+				}
+				return e;
+			});
         this.moveTimeoutTime = 200;
         document.addEventListener('click', this.UserClickEvent, true);
       }
@@ -136,6 +159,8 @@ const MultiSelect = (() => {
       onStop() {
         this.promises.cancel();
         this.unbindContextMenus();
+		ZeresPluginLibrary.PluginUtilities.removeStyle(config.info.name); 
+		this.unpatch();
         let tmp = Object.values(global.MultiSelectedUsers);
         for (let index = 0; index < tmp.length; index++) {
           if (tmp[index].Node != undefined){
@@ -198,15 +223,19 @@ const MultiSelect = (() => {
           }
     
           if (global.MultiSelectedUsers[ClickedUser.id] != undefined){
+			var tempnode = null
             if (global.MultiSelectedUsers[ClickedUser.id].Node != undefined){
-              global.MultiSelectedUsers[ClickedUser.id].Node.style.background = '';
+				tempnode = global.MultiSelectedUsers[ClickedUser.id].Node;
             } 
             delete global.MultiSelectedUsers[ClickedUser.id];
+			if (tempnode != null)
+				tempnode.forceUpdate();
           }
           else{
-            global.MultiSelectedUsers[ClickedUser.id] = { user: ClickedUser, Node: UserDom};
-            if (UserDom != undefined){
-              UserDom.style.background = 'blue';
+			var ownerinst = ZeresPluginLibrary.ReactTools.getOwnerInstance(UserDom);
+            global.MultiSelectedUsers[ClickedUser.id] = { user: ClickedUser, Node: ownerinst};
+            if (ownerinst != undefined){
+				ownerinst.forceUpdate()
             } 
           }
         }
@@ -245,12 +274,13 @@ const MultiSelect = (() => {
                         action: () => {
                           ContextMenuActions.closeContextMenu();
                           const recipients = Object.values(global.MultiSelectedUsers);
+						  global.MultiSelectedUsers = {};
                           let userIDX = 0;
                           const timeoutFunc = () => {
                             if (recipients[userIDX].Node != undefined){
-                              recipients[userIDX].Node.style.background = '';
+								recipients[userIDX].Node.forceUpdate();
                             }
-
+							
                             //Skip users that aren't in a voice channel anymore
                             while(this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId) == false){
                               userIDX++;
@@ -271,9 +301,6 @@ const MultiSelect = (() => {
                                   userIDX++;
                                   if (userIDX < recipients.length && this.moveTimeoutTime < 500) {
                                     setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
-                                  }
-                                  else{
-                                    global.MultiSelectedUsers = {};
                                   }
                                   
                                 }
@@ -317,6 +344,7 @@ const MultiSelect = (() => {
         });
       }
       /* eslint-enable no-param-reassign */
+
 
       unbindContextMenus() {
         this.contextMenuPatches.forEach((cancel) => cancel());
