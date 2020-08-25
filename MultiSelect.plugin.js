@@ -42,12 +42,17 @@ const MultiSelect = (() => {
           github_username: 'Torca2001',
         },
       ],
-      version: '1.0.2',
+      version: '1.0.3',
       description: 'Allows you to select multiple users (hold ctrl while click on them) in a voice chat to move them',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
     },
     changelog: [
+	  {
+        title: 'Minor fixes',
+        type: 'updated',
+        items: ['Fixed conflict with other plugins'],
+      },
       {
         title: 'Persistence',
         type: 'updated',
@@ -132,18 +137,19 @@ const MultiSelect = (() => {
           },
         };
         this.patchUserContextMenu(this.promises.state);
-		this.unpatch = Patcher.after(ZeresPluginLibrary.WebpackModules.getByDisplayName("VoiceUser").prototype, "render", (r, __, e,b) => {
-				//Check user is selected
-				if (global.MultiSelectedUsers[r.props.user.id] != undefined){
-					if (e.props.className.includes("UserSelected") == false){
-						e.props.className += " UserSelected";
+		this.unpatch = Patcher.after(ZeresPluginLibrary.WebpackModules.getByDisplayName("VoiceUser").prototype, "render", (r, __, e) => {
+					//Check user is selected
+					if (global.MultiSelectedUsers[r.props.user.id] != undefined){
+						if (e.props.className.includes("UserSelected") == false){
+							e.props.className += " UserSelected";
+						}
 					}
-				}
-				else{
-					e.props.className = e.props.className.replace("(\s|^)UserSelected(\s|$)", "");
-				}
-				return e;
-			});
+					else{
+						e.props.className = e.props.className.replace("(\s|^)UserSelected", "");
+					}
+					return (r, __,e);
+				});
+		
         this.moveTimeoutTime = 200;
         document.addEventListener('click', this.UserClickEvent, true);
       }
@@ -162,12 +168,12 @@ const MultiSelect = (() => {
 		ZeresPluginLibrary.PluginUtilities.removeStyle(config.info.name); 
 		this.unpatch();
         let tmp = Object.values(global.MultiSelectedUsers);
+        global.MultiSelectedUsers = {};
         for (let index = 0; index < tmp.length; index++) {
           if (tmp[index].Node != undefined){
-            tmp[index].Node.style.background = '';
+            tmp[index].Node.forceUpdate();
           }
         }
-        global.MultiSelectedUsers = {};
         document.removeEventListener('click', this.UserClickEvent,true);
       }
 
