@@ -119,6 +119,7 @@ const MultiSelect = (() => {
       constructor() {
         super();
         this.contextMenuPatches = [];
+        global.MultiSelectedUsers = {};
       }
 
       onStart() {
@@ -139,7 +140,7 @@ const MultiSelect = (() => {
         this.patchUserContextMenu(this.promises.state);
 		this.unpatch = Patcher.after(ZeresPluginLibrary.WebpackModules.getByDisplayName("VoiceUser").prototype, "render", (r, __, e) => {
 					//Check user is selected
-					if (global.MultiSelectedUsers[r.props.user.id] != undefined){
+					if (MultiSelectedUsers[r.props.user.id] != undefined){
 						if (e.props.className.includes("UserSelected") == false){
 							e.props.className += " UserSelected";
 						}
@@ -167,7 +168,7 @@ const MultiSelect = (() => {
         this.unbindContextMenus();
 		ZeresPluginLibrary.PluginUtilities.removeStyle(config.info.name); 
 		this.unpatch();
-        let tmp = Object.values(global.MultiSelectedUsers);
+        let tmp = Object.values(MultiSelectedUsers);
         global.MultiSelectedUsers = {};
         for (let index = 0; index < tmp.length; index++) {
           if (tmp[index].Node != undefined){
