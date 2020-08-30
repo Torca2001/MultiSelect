@@ -42,31 +42,16 @@ const MultiSelect = (() => {
           github_username: 'Torca2001',
         },
       ],
-      version: '1.0.3',
+      version: '1.0.4',
       description: 'Allows you to select multiple users (hold ctrl while click on them) in a voice chat to move them',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
     },
     changelog: [
 	  {
-        title: 'Minor fixes',
+        title: 'Zeres updated and broke me',
         type: 'updated',
-        items: ['Fixed conflict with other plugins'],
-      },
-      {
-        title: 'Persistence',
-        type: 'updated',
-        items: ['now it keeps people highlighted even if they are jumping about'],
-      },
-      {
-        title: 'Fixed it',
-        type: 'updated',
-        items: ['Works again'],
-      },
-      {
-        title: 'Using BDv2 Plugin',
-        type: 'updated',
-        items: ['It somehow works'],
+        items: ['Just minor update to quick fix the plugin while I find a proper fix'],
       },
     ],
   };
