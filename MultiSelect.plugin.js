@@ -42,16 +42,16 @@ const MultiSelect = (() => {
           github_username: 'Torca2001',
         },
       ],
-      version: '1.0.4',
+      version: '1.0.5',
       description: 'Allows you to select multiple users (hold ctrl while click on them) in a voice chat to move them',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
     },
     changelog: [
 	  {
-        title: 'Zeres updated and broke me',
+        title: 'Select all',
         type: 'updated',
-        items: ['Just minor update to quick fix the plugin while I find a proper fix'],
+        items: ['Ctrl/Shift Clicking a voice channel will select or deselect all users in that channel'],
       },
     ],
   };
@@ -168,69 +168,132 @@ const MultiSelect = (() => {
       }
 
       UserClickEvent(e){
-        //Nothing to check
-        if (e.path.length == 0){
+		//Nothing to check
+        if (e.path.length == 0 || (e.ctrlKey || e.shiftKey) == false){
           return;
         }
     
-        let IsVoiceUser = false;
-        let UserDom = e.path[0];
-        let Found = false;
-        for (let index = 0; index < e.path.length; index++) {
-          if (e.path[index].classList == undefined){
-            continue;
-          }
-            e.path[index].classList.forEach(classitem => {
-            if (classitem.includes("voiceUser")){
-              IsVoiceUser = true;
-            }
-            else if (IsVoiceUser && classitem.includes("draggable")){
-              UserDom = e.path[index];
-              Found = true;
-            }
-            });
-          if (Found){
-            break;
-          }
-        }
-    
-        if ((e.ctrlKey || e.shiftKey) && IsVoiceUser){
-          e.stopPropagation();
-    
-          let Treeitem = ZeresPluginLibrary.ReactTools.getReactInstance(UserDom);
-          let ClickedUser = null;
-          let overloadcount = 0;
-          while(ClickedUser == null && Treeitem != null && overloadcount < 1000){
-            if (Treeitem.memoizedProps != undefined && Treeitem.memoizedProps.user != undefined ){
-              ClickedUser = Treeitem.memoizedProps.user;
-            }else{
-              Treeitem = Treeitem.child;
-            }
-            overloadcount++;
-          }
-    
-          //No user
-          if (ClickedUser == null){
-            return;
-          }
-    
-          if (global.MultiSelectedUsers[ClickedUser.id] != undefined){
-			var tempnode = null
-            if (global.MultiSelectedUsers[ClickedUser.id].Node != undefined){
-				tempnode = global.MultiSelectedUsers[ClickedUser.id].Node;
-            } 
-            delete global.MultiSelectedUsers[ClickedUser.id];
-			if (tempnode != null)
-				tempnode.forceUpdate();
-          }
-          else{
-			var ownerinst = ZeresPluginLibrary.ReactTools.getOwnerInstance(UserDom);
-            global.MultiSelectedUsers[ClickedUser.id] = { user: ClickedUser, Node: ownerinst};
-            if (ownerinst != undefined){
-				ownerinst.forceUpdate()
-            } 
-          }
-        }
+		if (e.target.getAttribute("aria-label") != null && e.target.innerText != null && e.target.getAttribute("aria-label").startsWith("(voice channel)",e.target.innerText.length+1)){
+			//Voice channel selected
+			e.stopPropagation();
+				
+			let Found = false;
+			let channelparentdom = e.path[0];
+			let containerclass = ZeresPluginLibrary.DiscordClasses.ChannelList.containerDefault.value;
+			
+			for (let index = 0; index < e.path.length; index++){
+				if (e.path[index].classList == undefined){
+				continue;
+				}
+				if (e.path[index].className.includes(containerclass)){
+					Found = true;
+					channelparentdom = e.path[index];
+					break;
+				}
+			}
+			
+			if (Found && channelparentdom.children.length > 1 && channelparentdom.children[1].className != null && channelparentdom.children[1].className.includes("da-listDefault")){
+				let VoiceUserList = channelparentdom.children[1];
+				let UsersList = [];
+				let UserSelectedPresent = false;
+				
+				for (let index = 0; index < VoiceUserList.children.length; index++) {
+					var ownerinst = ZeresPluginLibrary.ReactTools.getOwnerInstance(VoiceUserList.children[index]);
+					if (ownerinst != undefined && ownerinst.props.user != undefined){
+						UsersList.push({user: ownerinst.props.user, Node: ownerinst});
+						
+						if (global.MultiSelectedUsers[ownerinst.props.user.id] != undefined){
+							UserSelectedPresent = true;
+						}
+					}
+				}
+			
+				//Update all users in vc
+				if (UserSelectedPresent){
+					for (let index = 0; index < UsersList.length; index++) {
+						delete global.MultiSelectedUsers[UsersList[index].user.id];
+						if (UsersList[index].Node != undefined){
+							UsersList[index].Node.forceUpdate();
+						}
+					}
+				}else{
+					for (let index = 0; index < UsersList.length; index++) {
+						global.MultiSelectedUsers[UsersList[index].user.id] = UsersList[index];
+						if (UsersList[index].Node != undefined){
+							UsersList[index].Node.forceUpdate()
+						}
+					}
+				}
+			
+			
+			}
+			
+			
+		}
+		else{
+			let IsVoiceUser = false;
+			let UserDom = e.path[0];
+			let Found = false;
+			for (let index = 0; index < e.path.length; index++) {
+			  if (e.path[index].classList == undefined){
+				continue;
+			  }
+				e.path[index].classList.forEach(classitem => {
+				if (classitem.includes("voiceUser")){
+				  IsVoiceUser = true;
+				}
+				else if (IsVoiceUser && classitem.includes("draggable")){
+				  UserDom = e.path[index];
+				  Found = true;
+				}
+				});
+			  if (Found){
+				break;
+			  }
+			}
+		
+			if ((e.ctrlKey || e.shiftKey) && IsVoiceUser){
+			  e.stopPropagation();
+		
+			  let Treeitem = ZeresPluginLibrary.ReactTools.getReactInstance(UserDom);
+			  let ClickedUser = null;
+			  let overloadcount = 0;
+			  
+			  //perform tree traversal -- cap at 1000 loops to prevent recursive
+			  while(ClickedUser == null && Treeitem != null && overloadcount < 1000){
+				if (Treeitem.memoizedProps != undefined && Treeitem.memoizedProps.user != undefined ){
+				  ClickedUser = Treeitem.memoizedProps.user;
+				}else{
+				  Treeitem = Treeitem.child;
+				}
+				overloadcount++;
+			  }
+		
+			  //No user
+			  if (ClickedUser == null){
+				return;
+			  }
+		
+			  if (global.MultiSelectedUsers[ClickedUser.id] != undefined){
+				var tempnode = null
+				if (global.MultiSelectedUsers[ClickedUser.id].Node != undefined){
+					tempnode = global.MultiSelectedUsers[ClickedUser.id].Node;
+				} 
+				delete global.MultiSelectedUsers[ClickedUser.id];
+				if (tempnode != null)
+					tempnode.forceUpdate();
+			  }
+			  else{
+				var ownerinst = ZeresPluginLibrary.ReactTools.getOwnerInstance(UserDom);
+				global.MultiSelectedUsers[ClickedUser.id] = { user: ClickedUser, Node: ownerinst};
+				if (ownerinst != undefined){
+					ownerinst.forceUpdate()
+				} 
+			  }
+			}
+		}
+	
+        
       }
     
       UserOnVoiceChannelInGuild(userid, guildid){
