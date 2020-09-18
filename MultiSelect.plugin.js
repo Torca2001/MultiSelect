@@ -42,16 +42,16 @@ const MultiSelect = (() => {
           github_username: 'Torca2001',
         },
       ],
-      version: '1.0.5',
+      version: '1.0.6',
       description: 'Allows you to select multiple users (hold ctrl while click on them) in a voice chat to move them',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
     },
     changelog: [
 	  {
-        title: 'Select all',
+        title: 'Support Hidden names',
         type: 'updated',
-        items: ['Ctrl/Shift Clicking a voice channel will select or deselect all users in that channel'],
+        items: ['Allows the plugin to work when hide names is checked'],
       },
     ],
   };
@@ -112,7 +112,13 @@ const MultiSelect = (() => {
 			`.UserSelected {
 				background-color: #005fff87;
 				border-radius: 5px;
-			}`
+			}
+			
+			.UserSelected:hover{
+				background-color: #04a7ff87 !important;
+			}
+			
+			`
 		);  
         this.PreviousGuildId = ZeresPluginLibrary.DiscordModules.SelectedGuildStore.getGuildId();
         global.MultiSelectedUsers = {};
@@ -126,12 +132,12 @@ const MultiSelect = (() => {
 		this.unpatch = Patcher.after(ZeresPluginLibrary.WebpackModules.getByDisplayName("VoiceUser").prototype, "render", (r, __, e) => {
 					//Check user is selected
 					if (MultiSelectedUsers[r.props.user.id] != undefined){
-						if (e.props.className.includes("UserSelected") == false){
-							e.props.className += " UserSelected";
+						if (e.props.children.props.className.includes("UserSelected") == false){
+							e.props.children.props.className += " UserSelected";
 						}
 					}
 					else{
-						e.props.className = e.props.className.replace("(\s|^)UserSelected", "");
+						e.props.children.props.className = e.props.children.props.className.replace("(\s|^)UserSelected", "");
 					}
 					return (r, __,e);
 				});
@@ -192,7 +198,7 @@ const MultiSelect = (() => {
 				}
 			}
 			
-			if (Found && channelparentdom.children.length > 1 && channelparentdom.children[1].className != null && channelparentdom.children[1].className.includes("da-listDefault")){
+			if (Found && channelparentdom.children.length > 1 && channelparentdom.children[1].className != null && channelparentdom.children[1].className.includes("da-list")){
 				let VoiceUserList = channelparentdom.children[1];
 				let UsersList = [];
 				let UserSelectedPresent = false;
