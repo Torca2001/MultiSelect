@@ -42,16 +42,16 @@ const MultiSelect = (() => {
           github_username: 'Torca2001',
         },
       ],
-      version: '1.0.6',
-      description: 'Allows you to select multiple users (hold ctrl while click on them) in a voice chat to move them',
+      version: '1.0.7',
+      description: 'Allows you to select multiple users (hold ctrl or shift while click on them) in a voice chat to move them, you can also ctrl/shift click a voice channel to select all',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
     },
     changelog: [
 	  {
-        title: 'Support Hidden names',
+        title: 'Support minimised style',
         type: 'updated',
-        items: ['Allows the plugin to work when hide names is checked'],
+        items: ['Allows the plugin to work when hide names is checked and improvements to save on rate limiting'],
       },
     ],
   };
@@ -307,7 +307,7 @@ const MultiSelect = (() => {
           let tmplist = Object.values(BdApi.findModuleByProps('getVoiceStates').getAllVoiceStates()[guildid]);
           for (let index = 0; index < tmplist.length; index++) {
             if (tmplist[index].userId == userid){
-              return true;
+              return tmplist[index].channelId; //return channel
             }
           }
         }
@@ -343,12 +343,18 @@ const MultiSelect = (() => {
                             }
 							
                             //Skip users that aren't in a voice channel anymore
-                            while(this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId) == false){
-                              userIDX++;
-                              //Stop function
-                              if (userIDX >= recipients.length){
-                                return;
-                              }
+							let UserInVoice = this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId);
+                            while(UserInVoice == false || UserInVoice == props.channel.id){	
+								//refresh users that didn't move
+								if (recipients[userIDX].Node != undefined){
+									recipients[userIDX].Node.forceUpdate();
+								}					
+								userIDX++;
+								//Stop function
+								if (userIDX >= recipients.length){
+									return;
+								}
+								UserInVoice = this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId);
                             }
 
                             ZeresPluginLibrary.DiscordModules.APIModule.patch({
