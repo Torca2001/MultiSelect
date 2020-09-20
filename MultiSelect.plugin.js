@@ -42,16 +42,16 @@ const MultiSelect = (() => {
           github_username: 'Torca2001',
         },
       ],
-      version: '1.0.7',
+      version: '1.0.8',
       description: 'Allows you to select multiple users (hold ctrl or shift while click on them) in a voice chat to move them, you can also ctrl/shift click a voice channel to select all',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
     },
     changelog: [
 	  {
-        title: 'Support minimised style',
+        title: 'Cancel Toast',
         type: 'updated',
-        items: ['Allows the plugin to work when hide names is checked and improvements to save on rate limiting'],
+        items: ['Toast will show allowing you to cancel the move'],
       },
     ],
   };
@@ -118,6 +118,17 @@ const MultiSelect = (() => {
 				background-color: #04a7ff87 !important;
 			}
 			
+			.ToastCancelMove{
+				background: red;
+				margin-left: 10px;
+				padding:5px;
+				border-radius:5px;
+			}
+			
+			.ToastCancelMove:hover{
+				background: #ff5b5b;
+			}
+			
 			`
 		);  
         this.PreviousGuildId = ZeresPluginLibrary.DiscordModules.SelectedGuildStore.getGuildId();
@@ -129,6 +140,7 @@ const MultiSelect = (() => {
           },
         };
         this.patchUserContextMenu(this.promises.state);
+		
 		this.unpatch = Patcher.after(ZeresPluginLibrary.WebpackModules.getByDisplayName("VoiceUser").prototype, "render", (r, __, e) => {
 					//Check user is selected
 					if (MultiSelectedUsers[r.props.user.id] != undefined){
@@ -337,7 +349,53 @@ const MultiSelect = (() => {
                           const recipients = Object.values(global.MultiSelectedUsers);
 						  global.MultiSelectedUsers = {};
                           let userIDX = 0;
+						  let CancelMove = false;
+						  let ToastItem = document.createElement("div")
+						  ToastItem.className = "toast";
+						  let ToastText = document.createElement("div");
+						  ToastText.className = "toast-text";
+						  let CounterSpan = null;
+						  ToastText.innerHTML = "Moved ";
+						  CounterSpan = document.createElement("span");
+						  CounterSpan.innerText = 0;
+						  ToastText.appendChild(CounterSpan);
+						  ToastText.appendChild(document.createTextNode(" of " + recipients.length));
+						  ToastItem.appendChild(ToastText);
+						  ZeresPluginLibrary.Toasts.ensureContainer();
+						  let ToastButton = document.createElement("div");
+						  ToastButton.className = "ToastCancelMove";
+						  ToastButton.innerText = "Cancel";
+						  ToastButton.onclick = () => {
+							  CancelMove = true;
+							  ToastText.innerText = "Cancelling";
+						  }
+						  ToastItem.appendChild(ToastButton);
+						  
+						  document.querySelector(".toasts").appendChild(ToastItem);
+						  
+						  
+						  
+						  
+						  //loop
                           const timeoutFunc = () => {
+							if (CancelMove){
+								ToastText.innerText = "Cancelled";
+								
+								//readd users that haven't moved yet
+								for (let index = userIDX; index < recipients.length; index++) {
+									if (global.MultiSelectedUsers[recipients[userIDX].user.id] == undefined){
+										global.MultiSelectedUsers[recipients[userIDX].user.id] = recipients[userIDX];
+									}
+								}
+								
+								ToastItem.classList.add("closing");
+									setTimeout(() => {ToastItem.remove();
+										if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
+									}, 300);
+								
+								return;
+							}
+							
                             if (recipients[userIDX].Node != undefined){
 								recipients[userIDX].Node.forceUpdate();
                             }
@@ -352,6 +410,10 @@ const MultiSelect = (() => {
 								userIDX++;
 								//Stop function
 								if (userIDX >= recipients.length){
+									ToastItem.classList.add("closing");
+									setTimeout(() => {ToastItem.remove();
+										if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
+									}, 300);
 									return;
 								}
 								UserInVoice = this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId);
@@ -366,16 +428,32 @@ const MultiSelect = (() => {
                               .then(e => {
                                 if (e.status === 200 || e.status === 204) {
                                   userIDX++;
-                                  if (userIDX < recipients.length && this.moveTimeoutTime < 500) {
+								  
+									if (CounterSpan != undefined){
+										CounterSpan.innerText = userIDX;
+									}
+                                  if (userIDX < recipients.length && this.moveTimeoutTime < 800) {
                                     setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
                                   }
+								  else{
+									ToastItem.classList.add("closing");
+									setTimeout(() => {ToastItem.remove();
+										if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
+									}, 300);
+								  }
                                   
                                 }
                               })
                               .catch(e => {
                                 this.moveTimeoutTime += 50;
                                 ZeresPluginLibrary.Logger.warn(this.getName(), `Rate limited, new timeout ${this.moveTimeoutTime}`);
-                                if (this.moveTimeoutTime<500) setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
+                                if (this.moveTimeoutTime<800) setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
+								else {
+									ToastItem.classList.add("closing");
+									setTimeout(() => {ToastItem.remove();
+										if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
+									}, 300);
+								}
                               });
                           };
 
