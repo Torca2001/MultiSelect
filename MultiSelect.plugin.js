@@ -40,7 +40,7 @@ const MultiSelect = (() => {
         discord_id: '97842053588713472',
         github_username: 'Torca2001',
       }, ],
-      version: '1.0.9',
+      version: '1.1.0',
       description: 'Allows you to select multiple users (hold ctrl or shift while click on them) in a voice chat to move them, you can also ctrl/shift click a voice channel to select all',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
@@ -57,6 +57,11 @@ const MultiSelect = (() => {
           'Fixed the move function being broken due to changes'
         ],
       },
+      {
+        title: 'Fixed on startup',
+        type: 'updated',
+        items: ['Move option would not appear if plugin ran on startup, this has been fixed'],
+      }
     ],
   };
 
@@ -69,9 +74,9 @@ const MultiSelect = (() => {
       MenuGroup
     } = BdApi.findModuleByProps('MenuGroup');
     const ContextMenuActions = BdApi.findModuleByProps('closeContextMenu');
-    const allMenus = BdApi.findAllModules((x) => x && x.default && x.default.displayName && x.default.displayName.includes('ContextMenu'));
-    const menusToPatch = ['ChannelListVoiceChannelContextMenu'];
-    const finalMenus = allMenus.filter((x) => menusToPatch.includes(x.default.displayName));
+    allMenus = BdApi.findAllModules((x) => x && x.default && x.default.displayName && x.default.displayName.includes('ContextMenu'));
+    menusToPatch = ['ChannelListVoiceChannelContextMenu'];
+    finalMenus = allMenus.filter((x) => menusToPatch.includes(x.default.displayName));
     /*
     const findInTree = (tree, searchFilter, { walkable = null, ignore = [] } = {}) => {
       if (typeof searchFilter === 'string') {
@@ -166,6 +171,7 @@ const MultiSelect = (() => {
 
         this.moveTimeoutTime = 200;
         document.addEventListener('click', this.UserClickEvent, true);
+        document.addEventListener('contextmenu', this.UserRightClick, true);
       }
 
       onSwitch() {
@@ -189,10 +195,37 @@ const MultiSelect = (() => {
           }
         }
         document.removeEventListener('click', this.UserClickEvent, true);
+        document.removeEventListener('contextmenu', this.UserRightClick, true);
       }
 
       canMoveInChannel(chan) {
         return ZeresPluginLibrary.DiscordModules.Permissions.can(ZeresPluginLibrary.DiscordModules.DiscordPermissions.MOVE_MEMBERS, ZeresPluginLibrary.DiscordAPI.currentUser, chan);
+      }
+
+      UserRightClick(e){
+        //Nothing to check
+        if (e.path.length == 0){
+          return;
+        }
+
+        let IsVoiceChannel = false;
+        for (let index = 0; index < Math.min(e.path.length, 5); index++) {
+          if (e.path[index].nodeName == "A" && e.path[index].getAttribute("aria-label") != null && e.path[index].innerText != null && e.path[index].getAttribute("aria-label").includes("(voice channel)")) {
+            IsVoiceChannel = true;
+            break;
+          }
+        }
+
+        if (IsVoiceChannel && finalMenus.length == 0){
+          //Ensure the menus are patched
+          allMenus = BdApi.findAllModules((x) => x && x.default && x.default.displayName && x.default.displayName.includes('ContextMenu'));
+          menusToPatch = ['ChannelListVoiceChannelContextMenu'];
+          finalMenus = allMenus.filter((x) => menusToPatch.includes(x.default.displayName));
+          const multiselect = BdApi.Plugins.get("MultiSelect").instance;
+
+
+          multiselect.patchUserContextMenu(multiselect.promises.state);
+        }
       }
 
       UserClickEvent(e) {
@@ -208,7 +241,6 @@ const MultiSelect = (() => {
             break;
           }
         }
-
 
         if (IsVoiceChannel) {
           //Voice channel selected
@@ -494,7 +526,9 @@ const MultiSelect = (() => {
                 type: MenuGroup,
                 _owner: null,
               };
-              if (Array.isArray(original)) original.splice(1, 0, newOne);
+              if (Array.isArray(original)){
+                original.splice(1, 0, newOne);
+              }
               else {
                 retVal.props.children[0].props.children = [original, newOne];
               };
