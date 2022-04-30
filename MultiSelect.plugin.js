@@ -40,27 +40,16 @@ const MultiSelect = (() => {
         discord_id: '97842053588713472',
         github_username: 'Torca2001',
       }, ],
-      version: '1.1.0',
+      version: '1.1.1',
       description: 'Allows you to select multiple users (hold ctrl or shift while click on them) in a voice chat to move them, you can also ctrl/shift click a voice channel to select all',
       github: 'https://github.com/Torca2001',
       github_raw: 'https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js',
     },
-    changelog: [{
-        title: 'Cancel Toast',
-        type: 'updated',
-        items: ['Toast will show allowing you to cancel the move'],
-      },
+    changelog: [
       {
-        title: 'Fixed',
+        title: 'Fixed menu option',
         type: 'updated',
-        items: ['Fixed move option not appearing in menu',
-          'Fixed the move function being broken due to changes'
-        ],
-      },
-      {
-        title: 'Fixed on startup',
-        type: 'updated',
-        items: ['Move option would not appear if plugin ran on startup, this has been fixed'],
+        items: ['Menu option to move users are back in the menu, current bug that its still displayed regardless of permission or if any users selected'],
       }
     ],
   };
@@ -74,9 +63,11 @@ const MultiSelect = (() => {
       MenuGroup
     } = BdApi.findModuleByProps('MenuGroup');
     const ContextMenuActions = BdApi.findModuleByProps('closeContextMenu');
+    /*
     allMenus = BdApi.findAllModules((x) => x && x.default && x.default.displayName && x.default.displayName.includes('ContextMenu'));
     menusToPatch = ['ChannelListVoiceChannelContextMenu'];
     finalMenus = allMenus.filter((x) => menusToPatch.includes(x.default.displayName));
+    */
     /*
     const findInTree = (tree, searchFilter, { walkable = null, ignore = [] } = {}) => {
       if (typeof searchFilter === 'string') {
@@ -119,7 +110,11 @@ const MultiSelect = (() => {
         super();
         this.contextMenuPatches = [];
         global.MultiSelectedUsers = {};
+        this.unpatch = undefined;
+        this.unpatches = [];
       }
+
+      
 
       onStart() {
         ZeresPluginLibrary.PluginUtilities.addStyle(config.info.name,
@@ -145,6 +140,294 @@ const MultiSelect = (() => {
 			
 			`
         );
+
+
+        //Pulled from Lightly's code, not proud of this. Too busy to actually do it myself
+        this.pluginDir = (BdApi.Plugins && BdApi.Plugins.folder) || window.ContentManager.pluginsFolder;
+        this.__isPowerCord = !!window.powercord && typeof BdApi.__getPluginConfigPath === 'function' || typeof global.isTab !== 'undefined';
+        let XenoLibOutdated = false;
+        let ZeresPluginLibraryOutdated = false;
+        if (global.BdApi && BdApi.Plugins && typeof BdApi.Plugins.get === 'function' /* you never know with those retarded client mods */) {
+          const versionChecker = (a, b) => ((a = a.split('.').map(a => parseInt(a))), (b = b.split('.').map(a => parseInt(a))), !!(b[0] > a[0])) || !!(b[0] == a[0] && b[1] > a[1]) || !!(b[0] == a[0] && b[1] == a[1] && b[2] > a[2]);
+          const isOutOfDate = (lib, minVersion) => lib && lib._config && lib._config.info && lib._config.info.version && versionChecker(lib._config.info.version, minVersion) || typeof global.isTab !== 'undefined';
+          let iXenoLib = BdApi.Plugins.get('XenoLib');
+          let iZeresPluginLibrary = BdApi.Plugins.get('ZeresPluginLibrary');
+          if (iXenoLib && iXenoLib.instance) iXenoLib = iXenoLib.instance;
+          if (iZeresPluginLibrary && iZeresPluginLibrary.instance) iZeresPluginLibrary = iZeresPluginLibrary.instance;
+          if (isOutOfDate(iXenoLib, '1.4.3')) XenoLibOutdated = true;
+          if (isOutOfDate(iZeresPluginLibrary, '2.0.0')) ZeresPluginLibraryOutdated = true;
+        }
+
+        if (!global.XenoLib || !global.ZeresPluginLibrary || global.DiscordJS || XenoLibOutdated || ZeresPluginLibraryOutdated) {
+          this._XL_PLUGIN = true;
+          if ("undefined" != typeof global.isTab) return;
+          const a = !!window.powercord && "function" == typeof BdApi.__getPluginConfigPath,
+            b = BdApi.findModuleByProps("openModal", "hasModalOpen");
+          if (b && b.hasModalOpen(`${this.getName()}_DEP_MODAL`)) return;
+          const c = !global.XenoLib,
+            d = !global.ZeresPluginLibrary,
+            e = c && d || (c || d) && (XenoLibOutdated || ZeresPluginLibraryOutdated),
+            f = (() => {
+              let a = "";
+              return c || d ? a += `Missing${XenoLibOutdated || ZeresPluginLibraryOutdated ? " and outdated" : ""} ` : (XenoLibOutdated || ZeresPluginLibraryOutdated) && (a += `Outdated `), a += `${e ? "Libraries" : "Library"} `, a
+            })(),
+            g = (() => {
+              let a = `The ${e ? "libraries" : "library"} `;
+              return c || XenoLibOutdated ? (a += "XenoLib ", (d || ZeresPluginLibraryOutdated) && (a += "and ZeresPluginLibrary ")) : (d || ZeresPluginLibraryOutdated) && (a += "ZeresPluginLibrary "), a += `required for ${this.getName()} ${e ? "are" : "is"} ${c || d ? "missing" : ""}${XenoLibOutdated || ZeresPluginLibraryOutdated ? c || d ? " and/or outdated" : "outdated" : ""}.`, a
+            })(),
+            h = BdApi.findModuleByDisplayName("Text"),
+            i = BdApi.findModuleByDisplayName("ConfirmModal"),
+            j = () => BdApi.alert(f, BdApi.React.createElement("span", {
+              style: {
+                color: "white"
+              }
+            }, BdApi.React.createElement("div", {}, g), `Due to a slight mishap however, you'll have to download the libraries yourself. This is not intentional, something went wrong, errors are in console.`, d || ZeresPluginLibraryOutdated ? BdApi.React.createElement("div", {}, BdApi.React.createElement("a", {
+              href: "https://betterdiscord.net/ghdl?id=2252",
+              target: "_blank"
+            }, "Click here to download ZeresPluginLibrary")) : null, c || XenoLibOutdated ? BdApi.React.createElement("div", {}, BdApi.React.createElement("a", {
+              href: "https://betterdiscord.net/ghdl?id=3169",
+              target: "_blank"
+            }, "Click here to download XenoLib")) : null));
+          if (global.XenoLib && global.ohgodohfuck) return;
+          if (!b || !i || !h) return console.error(`Missing components:${(b ? "" : " ModalStack") + (i ? "" : " ConfirmationModalComponent") + (h ? "" : "TextElement")}`), j();
+          class k extends BdApi.React.PureComponent {
+            constructor(a) {
+              super(a), this.state = {
+                hasError: !1
+              }, this.componentDidCatch = a => (console.error(`Error in ${this.props.label}, screenshot or copy paste the error above to Lighty for help.`), this.setState({
+                hasError: !0
+              }), "function" == typeof this.props.onError && this.props.onError(a)), this.render = () => this.state.hasError ? null : this.props.children
+            }
+          }
+          let l = !!global.DiscordJS,
+            m = !1;
+          const n = b.openModal(c => {
+            if (m) return null;
+            try {
+              return BdApi.React.createElement(k, {
+                label: "missing dependency modal",
+                onError: () => (b.closeModal(n), j())
+              }, BdApi.React.createElement(i, Object.assign({
+                header: f,
+                children: BdApi.React.createElement(h, {
+                  size: h.Sizes.SIZE_16,
+                  children: [`${g} Please click Download Now to download ${e ? "them" : "it"}.`]
+                }),
+                red: !1,
+                confirmText: "Download Now",
+                cancelText: "Cancel",
+                onCancel: c.onClose,
+                onConfirm: () => {
+                  if (l) return;
+                  l = !0;
+                  const c = require("request"),
+                    d = require("fs"),
+                    e = require("path"),
+                    f = BdApi.Plugins && BdApi.Plugins.folder ? BdApi.Plugins.folder : window.ContentManager.pluginsFolder,
+                    g = () => global.XenoLib && !XenoLibOutdated ? (BdApi.isSettingEnabled("fork-ps-5") || BdApi.isSettingEnabled("autoReload")) && !a ? void 0 : void BdApi.showToast("Reload to load the libraries and plugin!") : void c("https://raw.githubusercontent.com/1Lighty/BetterDiscordPlugins/master/Plugins/1XenoLib.plugin.js", (c, g, h) => {
+                      try {
+                        if (c || 200 !== g.statusCode) return b.closeModal(n), j();
+                        d.writeFile(e.join(f, "1XenoLib.plugin.js"), h, () => {
+                          (BdApi.isSettingEnabled("fork-ps-5") || BdApi.isSettingEnabled("autoReload")) && !a || BdApi.showToast("Reload to load the libraries and plugin!")
+                        })
+                      } catch (a) {
+                        console.error("Fatal error downloading XenoLib", a), b.closeModal(n), j()
+                      }
+                    });
+                  !global.ZeresPluginLibrary || ZeresPluginLibraryOutdated ? c("https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js", (a, c, h) => {
+                    try {
+                      if (a || 200 !== c.statusCode) return b.closeModal(n), j();
+                      d.writeFile(e.join(f, "0PluginLibrary.plugin.js"), h, () => { }), g()
+                    } catch (a) {
+                      console.error("Fatal error downloading ZeresPluginLibrary", a), b.closeModal(n), j()
+                    }
+                  }) : g()
+                }
+              }, c, {
+                onClose: () => { }
+              })))
+            } catch (a) {
+              return console.error("There has been an error constructing the modal", a), m = !0, b.closeModal(n), j(), null
+            }
+          }, {
+            modalKey: `${this.getName()}_DEP_MODAL`
+          });
+          
+          return;
+        }
+        //End of lightly's code
+
+        this.Patcher = XenoLib.createSmartPatcher({ before: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.before(this.getName(), moduleToPatch, functionName, callback, options), instead: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.instead(this.getName(), moduleToPatch, functionName, callback, options), after: (moduleToPatch, functionName, callback, options = {}) => ZeresPluginLibrary.Patcher.after(this.getName(), moduleToPatch, functionName, callback, options) });
+
+        const VoiceChannelPatchCheck = (props) => {
+          if (Object.values(global.MultiSelectedUsers).length < 1) return;
+  
+          ContextMenuActions.closeContextMenu();
+          const recipients = Object.values(global.MultiSelectedUsers);
+          global.MultiSelectedUsers = {};
+          let userIDX = 0;
+          let CancelMove = false;
+          let ToastItem = document.createElement("div")
+          ToastItem.className = "toast";
+          let ToastText = document.createElement("div");
+          ToastText.className = "toast-text";
+          let CounterSpan = null;
+          ToastText.innerHTML = "Moved ";
+          CounterSpan = document.createElement("span");
+          CounterSpan.innerText = 0;
+          ToastText.appendChild(CounterSpan);
+          ToastText.appendChild(document.createTextNode(" of " + recipients.length));
+          ToastItem.appendChild(ToastText);
+          ZeresPluginLibrary.Toasts.ensureContainer();
+          let ToastButton = document.createElement("div");
+          ToastButton.className = "ToastCancelMove";
+          ToastButton.innerText = "Cancel";
+          ToastButton.onclick = () => {
+            CancelMove = true;
+            ToastText.innerText = "Cancelling";
+          }
+          ToastItem.appendChild(ToastButton);
+  
+          document.querySelector(".toasts").appendChild(ToastItem);
+  
+          //loop
+          const timeoutFunc = () => {
+            if (CancelMove) {
+              ToastText.innerText = "Cancelled";
+  
+              //readd users that haven't moved yet
+              for (let index = userIDX; index < recipients.length; index++) {
+                if (global.MultiSelectedUsers[recipients[userIDX].user.id] == undefined) {
+                  global.MultiSelectedUsers[recipients[userIDX].user.id] = recipients[userIDX];
+                }
+              }
+  
+              ToastItem.classList.add("closing");
+              setTimeout(() => {
+                ToastItem.remove();
+                if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
+              }, 300);
+  
+              return;
+            }
+  
+  
+            if (recipients[userIDX].Node != undefined) {
+              recipients[userIDX].Node.forceUpdate();
+            }
+  
+  
+            //Skip users that aren't in a voice channel anymore or are already in it
+            let UserInVoice = this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId);
+            while (UserInVoice == false || UserInVoice == props.channel.id) {
+  
+              //refresh users that didn't move
+              if (recipients[userIDX].Node != undefined) {
+                recipients[userIDX].Node.forceUpdate();
+              }
+              userIDX++;
+              //Stop function
+              if (userIDX >= recipients.length) {
+                ToastItem.classList.add("closing");
+                setTimeout(() => {
+                  ToastItem.remove();
+                  if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
+                }, 300);
+                return;
+              }
+              UserInVoice = this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId);
+            }
+  
+            ZeresPluginLibrary.DiscordModules.APIModule.patch({
+                url: ZeresPluginLibrary.DiscordModules.DiscordConstants.Endpoints.GUILD_MEMBER(props.guild.id, recipients[userIDX].user.id),
+                body: {
+                  channel_id: props.channel.id
+                }
+              })
+              .then(e => {
+                if (e.status === 200 || e.status === 204) {
+                  userIDX++;
+  
+                  if (CounterSpan != undefined) {
+                    CounterSpan.innerText = userIDX;
+                  }
+                  if (userIDX < recipients.length && this.moveTimeoutTime < 800) {
+                    setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
+                  } else {
+                    ToastItem.classList.add("closing");
+                    setTimeout(() => {
+                      ToastItem.remove();
+                      if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
+                    }, 300);
+                  }
+                }
+              })
+              .catch(e => {
+                this.moveTimeoutTime += 50;
+                ZeresPluginLibrary.Logger.warn(this.getName(), `Rate limited, new timeout ${this.moveTimeoutTime}`);
+                if (this.moveTimeoutTime < 700 && e.status !== 403) setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
+                else {
+                  ToastItem.classList.add("closing");
+                  setTimeout(() => {
+                    ToastItem.remove();
+                    if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
+                  }, 300);
+                }
+              });
+          };
+  
+          timeoutFunc();
+        }
+
+        const patcherIdentifier = this.randomString();
+        const VoiceChannelContextMenuPatch = (fmod) => {
+          const mods = ZeresPluginLibrary.WebpackModules.findAll(e => (e.default === fmod || (e.default && e.default.__originalFunction === fmod)) && (e[patcherIdentifier] === undefined && (e[patcherIdentifier] = true)));
+          if (!mods) return;
+          const _this = this;
+          function ChannelListVoiceChannelContextMenu(props) {
+            const ret = props.__MLv2_type2(props);
+            try {
+              if (props.channel && props.channel.type === 4) return ret;
+              const menu = ZeresPluginLibrary.Utilities.getNestedProp(
+                ZeresPluginLibrary.Utilities.findInReactTree(ret, e => e && e.type && e.type.displayName === 'Menu'),
+                'props.children'
+              );
+              if (!Array.isArray(menu) && Object.values(global.MultiSelectedUsers).length > 0) return ret;
+              menu.push(XenoLib.createContextMenuItem(`Move ${Object.keys(global.MultiSelectedUsers).length} users here`, () => {VoiceChannelPatchCheck(props)}, _this.randomString()));
+            } catch (err) {
+              console.error('[Multiselect] Failed to patch Channel Context Menu', err);
+            }
+            return ret;
+          }
+          function NormalMenu(props) {
+            const ret = props.__MLv2_type(props);
+            try {
+              if (ret.type.displayName !== 'NormalMenu') return ret;
+              if (!ChannelListVoiceChannelContextMenu.displayName) Object.assign(ChannelListVoiceChannelContextMenu, ret.type);
+              ret.props.__MLv2_type2 = ret.type;
+              ret.type = ChannelListVoiceChannelContextMenu;
+            } catch (err) {
+              console.error('[Multiselect] Failed to patch Normal Menu', err);
+            }
+            return ret;
+          }
+          mods.forEach(mod => {
+            this.unpatches.push(
+              this.Patcher.after(
+                mod,
+                'default',
+                  (_, __, ret) => {
+                  const damnedmenu = ret.props.children;
+                  if (!NormalMenu.displayName) Object.assign(NormalMenu, damnedmenu.type);
+                  damnedmenu.props.__MLv2_type = damnedmenu.type;
+                  damnedmenu.type = NormalMenu;
+                }
+              )
+            )
+          });
+          return true;
+        };
+
         this.PreviousGuildId = ZeresPluginLibrary.DiscordModules.SelectedGuildStore.getGuildId();
         global.MultiSelectedUsers = {};
         this.promises = {
@@ -155,7 +438,8 @@ const MultiSelect = (() => {
             this.state.cancelled = true;
           },
         };
-        this.patchUserContextMenu(this.promises.state);
+        //VoiceChannelContextMenuPatch
+        this.unpatches.push(XenoLib.listenLazyContextMenu('ChannelListVoiceChannelContextMenu', VoiceChannelContextMenuPatch, true));
 
         this.unpatch = Patcher.after(ZeresPluginLibrary.WebpackModules.getByDisplayName("VoiceUser").prototype, "render", (r, __, e) => {
           //Check user is selected
@@ -186,7 +470,20 @@ const MultiSelect = (() => {
         this.promises.cancel();
         this.unbindContextMenus();
         ZeresPluginLibrary.PluginUtilities.removeStyle(config.info.name);
+
+        const tryUnpatch = fn => {
+          if (typeof fn !== 'function') return;
+          try {
+            // things can bug out, best to reload tbh, should maybe warn the user?
+            fn();
+          } catch (e) {
+            ZeresPluginLibrary.Logger.stacktrace(this.getName(), 'Error unpatching', e);
+          }
+        };
+
+        if (Array.isArray(this.unpatches)) for (let unpatch of this.unpatches) tryUnpatch(unpatch);
         this.unpatch();
+
         let tmp = Object.values(MultiSelectedUsers);
         global.MultiSelectedUsers = {};
         for (let index = 0; index < tmp.length; index++) {
@@ -216,6 +513,7 @@ const MultiSelect = (() => {
           }
         }
 
+        /*
         if (IsVoiceChannel && finalMenus.length == 0){
           //Ensure the menus are patched
           allMenus = BdApi.findAllModules((x) => x && x.default && x.default.displayName && x.default.displayName.includes('ContextMenu'));
@@ -226,6 +524,7 @@ const MultiSelect = (() => {
 
           multiselect.patchUserContextMenu(multiselect.promises.state);
         }
+        */
       }
 
       UserClickEvent(e) {
@@ -380,177 +679,15 @@ const MultiSelect = (() => {
         return false;
       }
 
-      /* eslint-disable no-param-reassign */
-      async patchUserContextMenu(promiseState) {
-        if (promiseState.cancelled) return;
-        finalMenus.forEach((menu) => {
-          this.contextMenuPatches.push(
-            Patcher.after(menu, 'default', (_, [props], retVal) => {
-              if (!retVal || Object.values(global.MultiSelectedUsers).length < 1) return;
-              //console.log(props);
-              const original = retVal.props.children[0].props.children;
-              const newOne = {
-                $$typeof: Symbol.for('react.element'),
-                key: null,
-                props: {
-                  children: [{
-                    $$typeof: Symbol.for('react.element'),
-                    key: null,
-                    props: {
-                      action: () => {
-                        ContextMenuActions.closeContextMenu();
-                        const recipients = Object.values(global.MultiSelectedUsers);
-                        global.MultiSelectedUsers = {};
-                        let userIDX = 0;
-                        let CancelMove = false;
-                        let ToastItem = document.createElement("div")
-                        ToastItem.className = "toast";
-                        let ToastText = document.createElement("div");
-                        ToastText.className = "toast-text";
-                        let CounterSpan = null;
-                        ToastText.innerHTML = "Moved ";
-                        CounterSpan = document.createElement("span");
-                        CounterSpan.innerText = 0;
-                        ToastText.appendChild(CounterSpan);
-                        ToastText.appendChild(document.createTextNode(" of " + recipients.length));
-                        ToastItem.appendChild(ToastText);
-                        ZeresPluginLibrary.Toasts.ensureContainer();
-                        let ToastButton = document.createElement("div");
-                        ToastButton.className = "ToastCancelMove";
-                        ToastButton.innerText = "Cancel";
-                        ToastButton.onclick = () => {
-                          CancelMove = true;
-                          ToastText.innerText = "Cancelling";
-                        }
-                        ToastItem.appendChild(ToastButton);
-
-                        document.querySelector(".toasts").appendChild(ToastItem);
-
-                        //loop
-                        const timeoutFunc = () => {
-                          if (CancelMove) {
-                            ToastText.innerText = "Cancelled";
-
-                            //readd users that haven't moved yet
-                            for (let index = userIDX; index < recipients.length; index++) {
-                              if (global.MultiSelectedUsers[recipients[userIDX].user.id] == undefined) {
-                                global.MultiSelectedUsers[recipients[userIDX].user.id] = recipients[userIDX];
-                              }
-                            }
-
-                            ToastItem.classList.add("closing");
-                            setTimeout(() => {
-                              ToastItem.remove();
-                              if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
-                            }, 300);
-
-                            return;
-                          }
-
-
-                          if (recipients[userIDX].Node != undefined) {
-                            recipients[userIDX].Node.forceUpdate();
-                          }
-
-
-                          //Skip users that aren't in a voice channel anymore or are already in it
-                          let UserInVoice = this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId);
-                          while (UserInVoice == false || UserInVoice == props.channel.id) {
-
-                            //refresh users that didn't move
-                            if (recipients[userIDX].Node != undefined) {
-                              recipients[userIDX].Node.forceUpdate();
-                            }
-                            userIDX++;
-                            //Stop function
-                            if (userIDX >= recipients.length) {
-                              ToastItem.classList.add("closing");
-                              setTimeout(() => {
-                                ToastItem.remove();
-                                if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
-                              }, 300);
-                              return;
-                            }
-                            UserInVoice = this.UserOnVoiceChannelInGuild(recipients[userIDX].user.id, this.PreviousGuildId);
-                          }
-
-                          ZeresPluginLibrary.DiscordModules.APIModule.patch({
-                              url: ZeresPluginLibrary.DiscordModules.DiscordConstants.Endpoints.GUILD_MEMBER(props.guild.id, recipients[userIDX].user.id),
-                              body: {
-                                channel_id: props.channel.id
-                              }
-                            })
-                            .then(e => {
-                              if (e.status === 200 || e.status === 204) {
-                                userIDX++;
-
-                                if (CounterSpan != undefined) {
-                                  CounterSpan.innerText = userIDX;
-                                }
-                                if (userIDX < recipients.length && this.moveTimeoutTime < 800) {
-                                  setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
-                                } else {
-                                  ToastItem.classList.add("closing");
-                                  setTimeout(() => {
-                                    ToastItem.remove();
-                                    if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
-                                  }, 300);
-                                }
-                              }
-                            })
-                            .catch(e => {
-                              this.moveTimeoutTime += 50;
-                              ZeresPluginLibrary.Logger.warn(this.getName(), `Rate limited, new timeout ${this.moveTimeoutTime}`);
-                              if (this.moveTimeoutTime < 800) setTimeout(() => timeoutFunc(), this.moveTimeoutTime);
-                              else {
-                                ToastItem.classList.add("closing");
-                                setTimeout(() => {
-                                  ToastItem.remove();
-                                  if (!document.querySelectorAll(".toasts .toast").length) document.querySelector(".toasts").remove();
-                                }, 300);
-                              }
-                            });
-                        };
-
-                        timeoutFunc();
-                      },
-                      id: 'move selected',
-                      label: `Move ${Object.keys(global.MultiSelectedUsers).length} users here`,
-                    },
-                    ref: null,
-                    type: MenuItem,
-                    _owner: null,
-                  }],
-                },
-                ref: null,
-                type: MenuGroup,
-                _owner: null,
-              };
-              if (Array.isArray(original)){
-                original.splice(1, 0, newOne);
-              }
-              else {
-                retVal.props.children[0].props.children = [original, newOne];
-              };
-            })
-          );
-        });
-
-        const menus = document.querySelectorAll('.layer-v9HyYc');
-        menus.forEach((menu) => {
-          // console.log(menu);
-          if (!menu) return;
-          const {
-            stateNode
-          } = menu.__reactEventHandlers$.children._owner;
-          // console.log(stateNode);
-          if (!stateNode) return;
-          stateNode.forceUpdate();
-          stateNode.updatePosition();
-        });
-      }
       /* eslint-enable no-param-reassign */
-
+      randomString() {
+        let start = rand();
+        while (start[0].toUpperCase() == start[0].toLowerCase()) start = rand();
+        return start + '-' + rand();
+        function rand() {
+          return Math.random().toString(36).substr(2, 7);
+        }
+      }
 
       unbindContextMenus() {
         this.contextMenuPatches.forEach((cancel) => cancel());
