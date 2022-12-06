@@ -18,8 +18,9 @@ module.exports = (Plugin, Library) => {
     const voiceStates = WebpackModules.getByProps("getVoiceStatesForChannel");
     const voiceUserComponent = WebpackModules.findByDisplayName('VoiceUser');
     const voiceUserSelector = BdApi.findModuleByProps("voiceUser").voiceUser;
+    const voiceUsersRender = ZLibrary.WebpackModules.getByPrototypes("renderPrioritySpeaker");
     const channelItemComponent = WebpackModules.getModule(m => Object(m.default).displayName === "ChannelItem");
-    //const MenuSeparator = ZLibrary.WebpackModules.getByProps("MenuSeparator").MenuSeparator;
+    //renderVoiceUsers
 
     return class MultiSelect extends Plugin {
         cancelled = false;
@@ -45,6 +46,11 @@ module.exports = (Plugin, Library) => {
         }
 
         async PatchAll() {
+            this.contextMenuPatches.push(BdApi.ContextMenu.patch("channel-context", this.channelMenuPatch.bind(this)));
+            
+            Patcher.after(voiceUsersRender.prototype, "render", this.voiceUserRenderPatch.bind(this));
+
+            return;
             Patcher.after(voiceUserComponent.prototype, "render", this.voiceUserRenderPatch.bind(this));
             Patcher.after(channelItemComponent, "default", this.ChannelItemPatch.bind(this));
 
@@ -52,12 +58,6 @@ module.exports = (Plugin, Library) => {
             document.querySelectorAll(DiscordSelectors.ChannelList.containerDefault).forEach(e => {
                 ReactTools.getOwnerInstance(e).forceUpdate();
             });
-
-            this.findContextMenu('useChannelDeleteItem').then((e) => {
-                if (this.cancelled) return;
-
-                Patcher.after(e.module, "default", this.channelMenuPatch.bind(this));
-            })
         }
 
         onStop() {
@@ -74,31 +74,34 @@ module.exports = (Plugin, Library) => {
             }
         }
 
-        channelMenuPatch(_, [props], retVal) {
-            if (props.type != 2) return;
+        channelMenuPatch(retVal, props) {
+            if (props.channel.type != 2) return;
 
-            if (props.guild_id != this.guild_id) {
-                this.guild_id = props.guild_id;
+            if (props.guild.id != this.guild_id) {
+                this.guild_id = props.guild.id;
                 this.selectedUsers.clear();
             }
 
-            if (this.selectedUsers.size <= 0 || !this.canMoveInChannel(props.id)) {
-                return [retVal];
+            if (this.selectedUsers.size <= 0 || !this.canMoveInChannel(props.channel.id)) {
+                return;
             };
 
-            const newOne = ContextMenu.buildMenuItem({
+            const separator = BdApi.ContextMenu.buildItem({
+                type: "separator"
+            });
+
+            const newItem = BdApi.ContextMenu.buildItem({
                 label: `Move ${this.selectedUsers.size} here`,
                 action: () => {
-                    this.moveSelectedUsers(this.guild_id, props.id);
+                    this.moveSelectedUsers(this.guild_id, props.channel.id);
                     this.selectedUsers.clear();
                 }
             });
 
-            return [
-                newOne,
-                DiscordModules.React.createElement(MenuSeparator),
-                retVal
-            ];
+            retVal.props.children.push(separator);
+            retVal.props.children.push(newItem);
+
+            return retVal;
         }
 
         moveSelectedUsers(guildID, channelID) {
@@ -112,7 +115,20 @@ module.exports = (Plugin, Library) => {
             let i = 0;
 
             Toasts.info('Moving ' + users.length + " users");
+            let moveInterval = setInterval(() => {
+                DiscordModules.GuildActions.setChannel(guildID, users[i], channelID);
+                i++;
+                if (i >= users.length) {
+                    clearInterval(moveInterval);
+                    Toasts.info("Moving complete");
+                }
+            }, wait);
+
+            
+
+            /*
             let moveUser = () => {
+                //DiscordModules.GuildActions.setChannel(guildID, users[i])
                 DiscordModules.APIModule.patch({
                     url: DiscordModules.DiscordConstants.Endpoints.GUILD_MEMBER(guildID, users[i]),
                     body: {
@@ -140,6 +156,7 @@ module.exports = (Plugin, Library) => {
             }
 
             moveUser();
+            */
         }
 
         voiceUserRenderPatch(org, args, resp) {
