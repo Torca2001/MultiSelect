@@ -1,7 +1,7 @@
 /**
  * @name MultiSelect
  * @description [Not working atm] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking and choosing to move users
- * @version 1.1.4
+ * @version 1.1.8
  * @author Torca
  * @authorId 97842053588713472
  * @website https://github.com/Torca2001
@@ -30,7 +30,7 @@
     WScript.Quit();
 
 @else@*/
-const config = {"main":"index.js","info":{"name":"MultiSelect","authors":[{"name":"Torca","discord_id":"97842053588713472","github_username":"Torca2001"}],"version":"1.1.4","description":"[Not working atm] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking and choosing to move users","github":"https://github.com/Torca2001","github_raw":"https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"},"changelog":[{"title":"Temporary patch","type":"updated","items":["Fixed compilation error till I can find time to fix it"]}],"defaultConfig":[{"type":"textbox","id":"moveInterval","value":"80","name":"Move interval","note":"in ms, delay between moving users to prevent being flagged as api abuse."}]};
+const config = {"main":"index.js","info":{"name":"MultiSelect","authors":[{"name":"Torca","discord_id":"97842053588713472","github_username":"Torca2001"}],"version":"1.1.8","description":"[Not working atm] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking and choosing to move users","github":"https://github.com/Torca2001","github_raw":"https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"},"changelog":[{"title":"Fix","type":"updated","items":["Fixed the plugin, moving selected users works. However selected an entire channel is still currently broken. Thank you for your patience"]}],"defaultConfig":[{"type":"textbox","id":"moveInterval","value":"80","name":"Move interval","note":"in ms, delay between moving users to prevent being flagged as api abuse."}]};
 class Dummy {
     constructor() {this._config = config;}
     start() {}
@@ -71,8 +71,9 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
     const voiceStates = WebpackModules.getByProps("getVoiceStatesForChannel");
     const voiceUserComponent = WebpackModules.findByDisplayName('VoiceUser');
     const voiceUserSelector = BdApi.findModuleByProps("voiceUser").voiceUser;
+    const voiceUsersRender = ZLibrary.WebpackModules.getByPrototypes("renderPrioritySpeaker");
     const channelItemComponent = WebpackModules.getModule(m => Object(m.default).displayName === "ChannelItem");
-    //const MenuSeparator = ZLibrary.WebpackModules.getByProps("MenuSeparator").MenuSeparator;
+    //renderVoiceUsers
 
     return class MultiSelect extends Plugin {
         cancelled = false;
@@ -98,6 +99,11 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
         }
 
         async PatchAll() {
+            this.contextMenuPatches.push(BdApi.ContextMenu.patch("channel-context", this.channelMenuPatch.bind(this)));
+            
+            Patcher.after(voiceUsersRender.prototype, "render", this.voiceUserRenderPatch.bind(this));
+
+            return;
             Patcher.after(voiceUserComponent.prototype, "render", this.voiceUserRenderPatch.bind(this));
             Patcher.after(channelItemComponent, "default", this.ChannelItemPatch.bind(this));
 
@@ -105,12 +111,6 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
             document.querySelectorAll(DiscordSelectors.ChannelList.containerDefault).forEach(e => {
                 ReactTools.getOwnerInstance(e).forceUpdate();
             });
-
-            this.findContextMenu('useChannelDeleteItem').then((e) => {
-                if (this.cancelled) return;
-
-                Patcher.after(e.module, "default", this.channelMenuPatch.bind(this));
-            })
         }
 
         onStop() {
@@ -127,31 +127,34 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
             }
         }
 
-        channelMenuPatch(_, [props], retVal) {
-            if (props.type != 2) return;
+        channelMenuPatch(retVal, props) {
+            if (props.channel.type != 2) return;
 
-            if (props.guild_id != this.guild_id) {
-                this.guild_id = props.guild_id;
+            if (props.guild.id != this.guild_id) {
+                this.guild_id = props.guild.id;
                 this.selectedUsers.clear();
             }
 
-            if (this.selectedUsers.size <= 0 || !this.canMoveInChannel(props.id)) {
-                return [retVal];
+            if (this.selectedUsers.size <= 0 || !this.canMoveInChannel(props.channel.id)) {
+                return;
             };
 
-            const newOne = ContextMenu.buildMenuItem({
+            const separator = BdApi.ContextMenu.buildItem({
+                type: "separator"
+            });
+
+            const newItem = BdApi.ContextMenu.buildItem({
                 label: `Move ${this.selectedUsers.size} here`,
                 action: () => {
-                    this.moveSelectedUsers(this.guild_id, props.id);
+                    this.moveSelectedUsers(this.guild_id, props.channel.id);
                     this.selectedUsers.clear();
                 }
             });
 
-            return [
-                newOne,
-                DiscordModules.React.createElement(MenuSeparator),
-                retVal
-            ];
+            retVal.props.children.push(separator);
+            retVal.props.children.push(newItem);
+
+            return retVal;
         }
 
         moveSelectedUsers(guildID, channelID) {
@@ -165,7 +168,20 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
             let i = 0;
 
             Toasts.info('Moving ' + users.length + " users");
+            let moveInterval = setInterval(() => {
+                DiscordModules.GuildActions.setChannel(guildID, users[i], channelID);
+                i++;
+                if (i >= users.length) {
+                    clearInterval(moveInterval);
+                    Toasts.info("Moving complete");
+                }
+            }, wait);
+
+            
+
+            /*
             let moveUser = () => {
+                //DiscordModules.GuildActions.setChannel(guildID, users[i])
                 DiscordModules.APIModule.patch({
                     url: DiscordModules.DiscordConstants.Endpoints.GUILD_MEMBER(guildID, users[i]),
                     body: {
@@ -193,6 +209,7 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
             }
 
             moveUser();
+            */
         }
 
         voiceUserRenderPatch(org, args, resp) {
