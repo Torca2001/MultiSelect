@@ -1,6 +1,6 @@
 /**
  * @name MultiSelect
- * @description [Not working atm] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking and choosing to move users
+ * @description [Mostly working] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking the destination channel and at the bottom selected the "Move X here"
  * @version 1.1.9
  * @author Torca
  * @authorId 97842053588713472
@@ -30,7 +30,7 @@
     WScript.Quit();
 
 @else@*/
-const config = {"main":"index.js","info":{"name":"MultiSelect","authors":[{"name":"Torca","discord_id":"97842053588713472","github_username":"Torca2001"}],"version":"1.1.9","description":"[Not working atm] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking and choosing to move users","github":"https://github.com/Torca2001","github_raw":"https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"},"changelog":[{"title":"Added selection","type":"updated","items":["Added the ability to hold shift/ctrl and do a drag selection over users to select them with left click adding to selection, right click removes from selection","Clicking on channels is still broken for the time being"]}],"defaultConfig":[{"type":"textbox","id":"moveInterval","value":"80","name":"Move interval","note":"in ms, delay between moving users to prevent being flagged as api abuse."}]};
+const config = {"main":"index.js","info":{"name":"MultiSelect","authors":[{"name":"Torca","discord_id":"97842053588713472","github_username":"Torca2001"}],"version":"1.1.9","description":"[Mostly working] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking the destination channel and at the bottom selected the \"Move X here\"","github":"https://github.com/Torca2001","github_raw":"https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"},"changelog":[{"title":"Fix description","type":"updated","items":["Fixed the description to be more clear on how to use the plugin","Also the plugin has been working this whole time."]}],"defaultConfig":[{"type":"textbox","id":"moveInterval","value":"80","name":"Move interval","note":"in ms, delay between moving users to prevent being flagged as api abuse."}]};
 class Dummy {
     constructor() {this._config = config;}
     start() {}
