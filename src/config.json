@@ -7,16 +7,17 @@
             "discord_id": "97842053588713472",
             "github_username": "Torca2001"
         }],
-        "version": "1.1.9",
-        "description": "[Not working atm] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking and choosing to move users",
+        "version": "1.2.0",
+        "description": "[Working] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking the destination channel and at the bottom selected the \"Move X here\"",
         "github": "https://github.com/Torca2001",
         "github_raw": "https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"
     },
     "changelog": [{
-        "title": "Added selection",
+        "title": "Fix description",
         "type": "updated",
-        "items": ["Added the ability to hold shift/ctrl and do a drag selection over users to select them with left click adding to selection, right click removes from selection",
-        "Clicking on channels is still broken for the time being"
+        "items": [
+            "Fixed the description to be more clear on how to use the plugin",
+            "Also the plugin has been working this whole time."
         ]
     }],
     "defaultConfig": [{
