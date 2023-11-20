@@ -1,0 +1,24 @@
+{
+  "name": "multiselect",
+  "version": "1.0.0",
+  "description": "BD Plugin - Select and move those selected users in a voice channel to another channel\r <br>\r Hold ctrl or Shift and click on the users in the voice chat,\r then right click the voice channel you want and select move x users",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "zpl build",
+    "init": "zpl init"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Torca2001/MultiSelect.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Torca2001/MultiSelect/issues"
+  },
+  "homepage": "https://github.com/Torca2001/MultiSelect#readme",
+  "dependencies": {
+    "zerespluginlibrary": "^2.0.6"
+  }
+}

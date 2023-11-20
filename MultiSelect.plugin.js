@@ -1,7 +1,7 @@
 /**
  * @name MultiSelect
  * @description [Working] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking the destination channel and at the bottom selected the "Move X here"
- * @version 1.2.0
+ * @version 1.3.0
  * @author Torca
  * @authorId 97842053588713472
  * @website https://github.com/Torca2001
@@ -30,7 +30,42 @@
     WScript.Quit();
 
 @else@*/
-const config = {"main":"index.js","info":{"name":"MultiSelect","authors":[{"name":"Torca","discord_id":"97842053588713472","github_username":"Torca2001"}],"version":"1.2.0","description":"[Working] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking the destination channel and at the bottom selected the \"Move X here\"","github":"https://github.com/Torca2001","github_raw":"https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"},"changelog":[{"title":"Fix description","type":"updated","items":["Fixed the description to be more clear on how to use the plugin","Also the plugin has been working this whole time."]}],"defaultConfig":[{"type":"textbox","id":"moveInterval","value":"80","name":"Move interval","note":"in ms, delay between moving users to prevent being flagged as api abuse."}]};
+const config = {
+    main: "index.js",
+    info: {
+        name: "MultiSelect",
+        authors: [
+            {
+                name: "Torca",
+                discord_id: "97842053588713472",
+                github_username: "Torca2001"
+            }
+        ],
+        version: "1.3.0",
+        description: "[Working] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking the destination channel and at the bottom selected the \"Move X here\"",
+        github: "https://github.com/Torca2001",
+        github_raw: "https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"
+    },
+    changelog: [
+        {
+            title: "Fix plugin for latest update",
+            type: "updated",
+            items: [
+                "Fixed bug in permission checking, prevent UI option from appearing",
+                "Updated to work with latest version of Discord"
+            ]
+        }
+    ],
+    defaultConfig: [
+        {
+            type: "textbox",
+            id: "moveInterval",
+            value: "80",
+            name: "Move interval",
+            note: "in ms, delay between moving users to prevent being flagged as api abuse."
+        }
+    ]
+};
 class Dummy {
     constructor() {this._config = config;}
     start() {}
@@ -38,13 +73,21 @@ class Dummy {
 }
  
 if (!global.ZeresPluginLibrary) {
-    BdApi.showConfirmationModal("Library Missing", `The library plugin needed for ${config.info.name} is missing. Please click Download Now to install it.`, {
+    BdApi.showConfirmationModal("Library Missing", `The library plugin needed for ${config.name ?? config.info.name} is missing. Please click Download Now to install it.`, {
         confirmText: "Download Now",
         cancelText: "Cancel",
         onConfirm: () => {
-            require("request").get("https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js", async (error, response, body) => {
-                if (error) return require("electron").shell.openExternal("https://betterdiscord.app/Download?id=9");
-                await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body, r));
+            require("request").get("https://betterdiscord.app/gh-redirect?id=9", async (err, resp, body) => {
+                if (err) return require("electron").shell.openExternal("https://betterdiscord.app/Download?id=9");
+                if (resp.statusCode === 302) {
+                    require("request").get(resp.headers.location, async (error, response, content) => {
+                        if (error) return require("electron").shell.openExternal("https://betterdiscord.app/Download?id=9");
+                        await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), content, r));
+                    });
+                }
+                else {
+                    await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body, r));
+                }
             });
         }
     });
@@ -53,10 +96,6 @@ if (!global.ZeresPluginLibrary) {
 module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
      const plugin = (Plugin, Library) => {
     const {
-        DiscordModules: {
-            React,
-            DiscordConstants
-        },
         ReactTools,
         DiscordSelectors,
         Utilities,
@@ -75,6 +114,7 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
     const channelItemComponent = WebpackModules.getModule(m => Object(m.default).displayName === "ChannelItem");
     const guildChannelStore = WebpackModules.getByProps("getVocalChannelIds");
     const selectedGuildStore = WebpackModules.getModuleByName("SelectedGuildStore")
+    const setMemberChannel = BdApi.findModuleByProps("setChannel").setChannel;
     const sortedVoiceStatesStore = WebpackModules.getByProps("countVoiceStatesForChannel")
 
     return class MultiSelect extends Plugin {
@@ -212,12 +252,12 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
         channelMenuPatch(retVal, props) {
             if (props.channel.type != 2) return;
 
-            if (props.guild.id != this.guild_id) {
+            if (props.guild.id !=  this.guild_id) {
                 this.guild_id = props.guild.id;
                 this.selectedUsers.clear();
             }
 
-            if (this.selectedUsers.size <= 0 || !this.canMoveInChannel(props.channel.id)) {
+            if (!this.canMoveInChannel(props.channel.id) || this.selectedUsers.size <= 0) {
                 return;
             };
 
@@ -244,6 +284,8 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
             if (!isNaN(this.settings.moveInterval) && this.settings.moveInterval > 10) {
                 wait = Number(this.settings.moveInterval);
             }
+
+            // 
             let giveup = wait + 750;
 
             let users = Array.from(this.selectedUsers);
@@ -251,7 +293,7 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
 
             Toasts.info('Moving ' + users.length + " users");
             let moveInterval = setInterval(() => {
-                DiscordModules.GuildActions.setChannel(guildID, users[i], channelID);
+                setMemberChannel(guildID, users[i], channelID);
                 i++;
                 if (i >= users.length) {
                     clearInterval(moveInterval);
@@ -262,6 +304,7 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
             
 
             /*
+            // Not ideal
             let moveUser = () => {
                 //DiscordModules.GuildActions.setChannel(guildID, users[i])
                 DiscordModules.APIModule.patch({
@@ -417,11 +460,8 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
             let channel = DiscordModules.ChannelStore.getChannel(channelID);
 
             if (!channel.guild_id) return true;
-            return DiscordModules.Permissions.can({
-                permission: DiscordModules.DiscordPermissions.MOVE_MEMBERS,
-                user: DiscordModules.UserStore.getCurrentUser().id,
-                context: channel
-            });
+
+            return DiscordModules.Permissions.can(DiscordModules.DiscordPermissions.MOVE_MEMBERS, channel);
         }
 
         contextMenuPatches = [];

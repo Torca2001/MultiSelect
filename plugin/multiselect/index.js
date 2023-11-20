@@ -1,9 +1,5 @@
 module.exports = (Plugin, Library) => {
     const {
-        DiscordModules: {
-            React,
-            DiscordConstants
-        },
         ReactTools,
         DiscordSelectors,
         Utilities,
@@ -22,6 +18,7 @@ module.exports = (Plugin, Library) => {
     const channelItemComponent = WebpackModules.getModule(m => Object(m.default).displayName === "ChannelItem");
     const guildChannelStore = WebpackModules.getByProps("getVocalChannelIds");
     const selectedGuildStore = WebpackModules.getModuleByName("SelectedGuildStore")
+    const setMemberChannel = BdApi.findModuleByProps("setChannel").setChannel;
     const sortedVoiceStatesStore = WebpackModules.getByProps("countVoiceStatesForChannel")
 
     return class MultiSelect extends Plugin {
@@ -159,12 +156,12 @@ module.exports = (Plugin, Library) => {
         channelMenuPatch(retVal, props) {
             if (props.channel.type != 2) return;
 
-            if (props.guild.id != this.guild_id) {
+            if (props.guild.id !=  this.guild_id) {
                 this.guild_id = props.guild.id;
                 this.selectedUsers.clear();
             }
 
-            if (this.selectedUsers.size <= 0 || !this.canMoveInChannel(props.channel.id)) {
+            if (!this.canMoveInChannel(props.channel.id) || this.selectedUsers.size <= 0) {
                 return;
             };
 
@@ -191,6 +188,8 @@ module.exports = (Plugin, Library) => {
             if (!isNaN(this.settings.moveInterval) && this.settings.moveInterval > 10) {
                 wait = Number(this.settings.moveInterval);
             }
+
+            // 
             let giveup = wait + 750;
 
             let users = Array.from(this.selectedUsers);
@@ -198,7 +197,7 @@ module.exports = (Plugin, Library) => {
 
             Toasts.info('Moving ' + users.length + " users");
             let moveInterval = setInterval(() => {
-                DiscordModules.GuildActions.setChannel(guildID, users[i], channelID);
+                setMemberChannel(guildID, users[i], channelID);
                 i++;
                 if (i >= users.length) {
                     clearInterval(moveInterval);
@@ -209,6 +208,7 @@ module.exports = (Plugin, Library) => {
             
 
             /*
+            // Not ideal
             let moveUser = () => {
                 //DiscordModules.GuildActions.setChannel(guildID, users[i])
                 DiscordModules.APIModule.patch({
@@ -364,11 +364,8 @@ module.exports = (Plugin, Library) => {
             let channel = DiscordModules.ChannelStore.getChannel(channelID);
 
             if (!channel.guild_id) return true;
-            return DiscordModules.Permissions.can({
-                permission: DiscordModules.DiscordPermissions.MOVE_MEMBERS,
-                user: DiscordModules.UserStore.getCurrentUser().id,
-                context: channel
-            });
+
+            return DiscordModules.Permissions.can(DiscordModules.DiscordPermissions.MOVE_MEMBERS, channel);
         }
 
         contextMenuPatches = [];
