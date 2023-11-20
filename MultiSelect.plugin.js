@@ -1,7 +1,7 @@
 /**
  * @name MultiSelect
  * @description [Working] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking the destination channel and at the bottom selected the "Move X here"
- * @version 1.2.0
+ * @version 1.3.0
  * @author Torca
  * @authorId 97842053588713472
  * @website https://github.com/Torca2001
@@ -41,18 +41,18 @@ const config = {
                 github_username: "Torca2001"
             }
         ],
-        version: "1.2.0",
+        version: "1.3.0",
         description: "[Working] Allows you to CTRL/Shift click users in voice or the voice channel for all. To move selected users in mass to another voice channel by right clicking the destination channel and at the bottom selected the \"Move X here\"",
         github: "https://github.com/Torca2001",
         github_raw: "https://raw.githubusercontent.com/Torca2001/MultiSelect/master/MultiSelect.plugin.js"
     },
     changelog: [
         {
-            title: "Fix description",
+            title: "Fix plugin for latest update",
             type: "updated",
             items: [
-                "Fixed the description to be more clear on how to use the plugin",
-                "Also the plugin has been working this whole time."
+                "Fixed bug in permission checking, prevent UI option from appearing",
+                "Updated to work with latest version of Discord"
             ]
         }
     ],
